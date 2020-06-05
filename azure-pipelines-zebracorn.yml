@@ -1,0 +1,58 @@
+trigger:
+- master
+
+strategy:
+  matrix:
+    linux64:
+      python.version: '3.6'
+      imageName: 'ubuntu-18.04'
+      bits: 64
+      platform: 'linux'
+    # linux32:
+    #   python.version: '3.6'
+    #   imageName: 'ubuntu-18.04'
+    #   bits: 32
+    #   platform: 'linux'
+    # windows64:
+    #   python.version: '3.6'
+    #   imageName: 'windows-2019'
+    #   bits: 64
+    #   platform: 'windows'
+    # windows32:
+    #   python.version: '3.6'
+    #   imageName: 'windows-2019'
+    #   bits: 32
+    #   platform: 'windows'
+
+pool:
+  vmImage: $(imageName)
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '$(python.version)'
+  displayName: 'Use Python $(python.version)'
+
+- script: |
+    python -m pip install --upgrade pip
+    python -m pip install wheel
+  displayName: 'Install dependencies'
+
+- script: |
+    pip install pytest pytest-azurepipelines
+    cd bindings/python && pytest
+  displayName: 'pytest'
+
+- script: |
+    cd bindings/python && python setup.py bdist_wheel
+  displayName: 'Artifact creation'
+
+- task: CopyFiles@2
+  inputs:
+    targetFolder: $(Build.ArtifactStagingDirectory)
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'dist'
+    publishLocation: 'Container'
