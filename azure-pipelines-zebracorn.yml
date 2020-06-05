@@ -15,7 +15,7 @@ jobs:
            python3.6 get-pip.py && \
            pip3 --version && \
            pip3 install setuptools wheel pytest --user && \
-           cd bindings/python && python setup.py bdist_wheel"
+           cd bindings/python && python3 setup.py bdist_wheel"
     displayName: 'Build / Artifact Creation'
   - task: CopyFiles@2
     inputs:
@@ -32,8 +32,8 @@ jobs:
   steps:
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '$(python.version)'
-    displayName: 'Use Python $(python.version)'
+      versionSpec: '3.6'
+    displayName: 'Use Python 3.6'
   - script: |
       python -m pip install --upgrade pip
       python -m pip install wheel
@@ -59,14 +59,14 @@ jobs:
     vmImage: 'windows-2019'
   strategy:
     matrix:
-        Windows32:
+        32bit:
           PYTHON_VERSION: '3.6'
           PYTHON_ARCH: 'x86'
-          BITS: 32
-        Windows64:
+          PLATFORM: 'Win32'
+        64bit:
           PYTHON_VERSION: '3.6'
           PYTHON_ARCH: 'x64'
-          BITS: 64
+          PLATFORM: 'x64'
   steps:
   - task: UsePythonVersion@0
     inputs:
@@ -76,31 +76,17 @@ jobs:
     displayName: 'Use Python $(PYTHON_VERSION) $(PYTHON_ARCH)'
   - script: python -m pip install --upgrade pip setuptools wheel pytest
     displayName: 'Install dependencies'
-  - powershell: |
-      # wheels appear to use mingw64 version 6.3.0, but 6.4.0
-      # is the closest match available from choco package manager
-      choco install -y mingw --forcex86 --force --version=6.4.0
-    displayName: 'Install 32-bit mingw for 32-bit builds'
-    condition: and(succeeded(), eq(variables['BITS'], 32))
-  - powershell: |
-      If ($(BITS) -eq 32) {
-          # 32-bit build requires careful adjustments
-          # until Microsoft has a switch we can use
-          # directly for i686 mingw
-          $env:NPY_DISTUTILS_APPEND_FLAGS = 1
-          $env:CFLAGS = "-m32"
-          $env:LDFLAGS = "-m32"
-          refreshenv
-      }
-      $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw$(BITS)\\bin;" + $env:PATH
-      cd bindings\\python
-      python setup.py bdist_wheel
-      ls dist -r | Foreach-Object {
-          pip install $_.FullName
-      }
+  - task: VSBuild@1
+    inputs:
+      solution: 'msvc\*.sln'
+      vsVersion: '14.0' 
+      platform: $(PLATFORM)
+      configuration: Release
     displayName: 'Build / Artifact creation'
   - powershell: |
-      $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw$(BITS)\\bin;" + $env:PATH
+      dir
+    displayName: 'Python / Artifact creation'
+  - powershell: |
       # pytest
     displayName: 'pytest'
   - task: CopyFiles@2
