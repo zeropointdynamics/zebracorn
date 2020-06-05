@@ -40,7 +40,7 @@ steps:
 
 - script: |
     pip install pytest pytest-azurepipelines
-    cd bindings/python && pytest
+    # cd bindings/python && pytest
   displayName: 'pytest'
 
 - script: |
