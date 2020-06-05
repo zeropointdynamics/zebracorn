@@ -1,58 +1,113 @@
 trigger:
 - master
 
-strategy:
-  matrix:
-    linux64:
-      python.version: '3.6'
-      imageName: 'ubuntu-18.04'
-      bits: 64
-      platform: 'linux'
-    # linux32:
-    #   python.version: '3.6'
-    #   imageName: 'ubuntu-18.04'
-    #   bits: 32
-    #   platform: 'linux'
-    # windows64:
-    #   python.version: '3.6'
-    #   imageName: 'windows-2019'
-    #   bits: 64
-    #   platform: 'windows'
-    # windows32:
-    #   python.version: '3.6'
-    #   imageName: 'windows-2019'
-    #   bits: 32
-    #   platform: 'windows'
+jobs:
+- job: Linux32
+  pool:
+    vmImage: 'ubuntu-18.04'
+  steps:
+  - script: |
+           docker pull i386/ubuntu:bionic
+           docker run -v $(pwd):/zebracorn i386/ubuntu:bionic /bin/bash -c "cd zebracorn && \
+           apt-get -y update && \
+           apt-get -y install curl python3.6-dev python3.6 python3-distutils pkg-config build-essential && \
+           curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+           python3.6 get-pip.py && \
+           pip3 --version && \
+           pip3 install setuptools wheel pytest --user && \
+           cd bindings/python && python setup.py bdist_wheel"
+    displayName: 'Build / Artifact Creation'
+  - task: CopyFiles@2
+    inputs:
+      targetFolder: $(Build.ArtifactStagingDirectory)
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'dist'
+      publishLocation: 'Container'
 
-pool:
-  vmImage: $(imageName)
+- job: Linux64
+  pool:
+    vmImage: 'ubuntu-18.04'
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+    displayName: 'Use Python $(python.version)'
+  - script: |
+      python -m pip install --upgrade pip
+      python -m pip install wheel
+    displayName: 'Install dependencies'
+  - script: |
+      pip install pytest pytest-azurepipelines
+      # cd bindings/python && pytest
+    displayName: 'pytest'
+  - script: |
+      cd bindings/python && python setup.py bdist_wheel
+    displayName: 'Build / Artifact creation'
+  - task: CopyFiles@2
+    inputs:
+      targetFolder: $(Build.ArtifactStagingDirectory)
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'dist'
+      publishLocation: 'Container'
 
-steps:
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: '$(python.version)'
-  displayName: 'Use Python $(python.version)'
-
-- script: |
-    python -m pip install --upgrade pip
-    python -m pip install wheel
-  displayName: 'Install dependencies'
-
-- script: |
-    pip install pytest pytest-azurepipelines
-    # cd bindings/python && pytest
-  displayName: 'pytest'
-
-- script: |
-    cd bindings/python && python setup.py bdist_wheel
-  displayName: 'Artifact creation'
-
-- task: CopyFiles@2
-  inputs:
-    targetFolder: $(Build.ArtifactStagingDirectory)
-
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'dist'
-    publishLocation: 'Container'
+- job: Windows
+  pool:
+    vmImage: 'windows-2019'
+  strategy:
+    matrix:
+        Windows32:
+          PYTHON_VERSION: '3.6'
+          PYTHON_ARCH: 'x86'
+          BITS: 32
+        Windows64:
+          PYTHON_VERSION: '3.6'
+          PYTHON_ARCH: 'x64'
+          BITS: 64
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: $(PYTHON_VERSION)
+      addToPath: true
+      architecture: $(PYTHON_ARCH)
+    displayName: 'Use Python $(PYTHON_VERSION) $(PYTHON_ARCH)'
+  - script: python -m pip install --upgrade pip setuptools wheel pytest
+    displayName: 'Install dependencies'
+  - powershell: |
+      # wheels appear to use mingw64 version 6.3.0, but 6.4.0
+      # is the closest match available from choco package manager
+      choco install -y mingw --forcex86 --force --version=6.4.0
+    displayName: 'Install 32-bit mingw for 32-bit builds'
+    condition: and(succeeded(), eq(variables['BITS'], 32))
+  - powershell: |
+      If ($(BITS) -eq 32) {
+          # 32-bit build requires careful adjustments
+          # until Microsoft has a switch we can use
+          # directly for i686 mingw
+          $env:NPY_DISTUTILS_APPEND_FLAGS = 1
+          $env:CFLAGS = "-m32"
+          $env:LDFLAGS = "-m32"
+          refreshenv
+      }
+      $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw$(BITS)\\bin;" + $env:PATH
+      cd bindings\\python
+      python setup.py bdist_wheel
+      ls dist -r | Foreach-Object {
+          pip install $_.FullName
+      }
+    displayName: 'Build / Artifact creation'
+  - powershell: |
+      $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw$(BITS)\\bin;" + $env:PATH
+      # pytest
+    displayName: 'pytest'
+  - task: CopyFiles@2
+    inputs:
+      targetFolder: $(Build.ArtifactStagingDirectory)
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'dist'
+      publishLocation: 'Container'
