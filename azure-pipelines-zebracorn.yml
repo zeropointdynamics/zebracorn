@@ -43,8 +43,8 @@ jobs:
         cd bindings/python && $(PYTHON) setup.py bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
+        cd ../.. && \
         yum install libcmocka-devel && \
-        cd ../.. & \
         make test"
         ls -alh
         mkdir -p dist
