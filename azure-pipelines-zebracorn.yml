@@ -6,11 +6,18 @@ jobs:
 - job: ManyLinux
   strategy:
     matrix:
-      64Bit2010:
-        arch: x86_64
-        plat: manylinux2010_x86_64
-        image: quay.io/pypa/manylinux2010_x86_64
-        python.architecture: x64
+      32Bit:
+        arch: i686
+        plat: manylinux1_i686
+        image: quay.io/pypa/manylinux1_i686
+        python.architecture: x86
+        package_name: zebracorn
+        PYTHON: /opt/python/cp36-cp36m/bin/python
+      32Bit2010:
+        arch: i686
+        plat: manylinux2010_i686
+        image: quay.io/pypa/manylinux2010_i686
+        python.architecture: x86
         package_name: zebracorn
         PYTHON: /opt/python/cp36-cp36m/bin/python
       64Bit:
@@ -20,11 +27,11 @@ jobs:
         python.architecture: x64
         package_name: zebracorn
         PYTHON: /opt/python/cp36-cp36m/bin/python
-      32Bit:
-        arch: i686
-        plat: manylinux1_i686
-        image: quay.io/pypa/manylinux1_i686
-        python.architecture: x86
+      64Bit2010:
+        arch: x86_64
+        plat: manylinux2010_x86_64
+        image: quay.io/pypa/manylinux2010_x86_64
+        python.architecture: x64
         package_name: zebracorn
         PYTHON: /opt/python/cp36-cp36m/bin/python
   pool:
@@ -33,97 +40,20 @@ jobs:
     - script: |
         set -ex
         docker run -e PLAT=$(plat) -e package_name=$(package_name) --rm -v `pwd`:/repo $(image) /bin/bash -c "cd repo && \
-        cd bindings/python && $(PYTHON) setup.py bdist_wheel"
+        cd bindings/python && $(PYTHON) setup.py bdist_wheel && \
+        mkdir -p /repo/wheelhouse && \
+        for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
+        yum install libcmocka-devel && \
+        cd ../.. & \
+        make test"
         ls -alh
         mkdir -p dist
-        cp bindings/python/dist/*.whl dist/
-      displayName: Build wheels
+        cp wheelhouse/*.whl dist/
+      displayName: 'Build / Test / Artifact creation'
     - task: PublishPipelineArtifact@0
       inputs:
         artifactName: 'artifact_$(Agent.OS)_$(Agent.JobName)_$(python.architecture)'
         targetPath: 'dist'
-
-# - job: ManyLinux
-#   pool:
-#     vmImage: 'ubuntu-latest'
-#   strategy:
-#     matrix:
-#       32bit:
-#         containerImage: dockcross/manylinux2010-x86:latest
-#         PYTHON: /opt/python/cp36-cp36m/bin/python
-#       64bit:
-#         containerImage: dockcross/manylinux2010-x64:latest
-#         PYTHON: /opt/python/cp36-cp36m/bin/python
-#   container: $[ variables['containerImage'] ]
-#   steps:
-#   - script: |
-#       ls /opt/python/*
-#       $(PYTHON) -m pip install --upgrade pip
-#       $(PYTHON) -m pip install wheel
-#     displayName: 'Install dependencies'
-#   - script: |
-#       cd bindings/python && $(PYTHON) setup.py bdist_wheel
-#     displayName: 'Build / Artifact creation'
-#   - task: CopyFiles@2
-#     inputs:
-#       targetFolder: $(Build.ArtifactStagingDirectory)
-#   - task: PublishBuildArtifacts@1
-#     inputs:
-#       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-#       ArtifactName: 'dist'
-#       publishLocation: 'Container'
-
-# - job: Linux32
-#   pool:
-#     vmImage: 'ubuntu-18.04'
-#   steps:
-#   - script: |
-#            docker pull i386/ubuntu:bionic
-#            docker run -v $(pwd):/zebracorn i386/ubuntu:bionic /bin/bash -c "cd zebracorn && \
-#            apt-get -y update && \
-#            apt-get -y install curl python3.6-dev python3.6 python3-distutils pkg-config build-essential && \
-#            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-#            python3.6 get-pip.py && \
-#            pip3 --version && \
-#            pip3 install setuptools wheel pytest --user && \
-#            cd bindings/python && python3 setup.py bdist_wheel"
-#     displayName: 'Build / Artifact Creation'
-#   - task: CopyFiles@2
-#     inputs:
-#       targetFolder: $(Build.ArtifactStagingDirectory)
-#   - task: PublishBuildArtifacts@1
-#     inputs:
-#       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-#       ArtifactName: 'dist'
-#       publishLocation: 'Container'
-
-# - job: Linux64
-#   pool:
-#     vmImage: 'ubuntu-18.04'
-#   steps:
-#   - task: UsePythonVersion@0
-#     inputs:
-#       versionSpec: '3.6'
-#     displayName: 'Use Python 3.6'
-#   - script: |
-#       python -m pip install --upgrade pip
-#       python -m pip install wheel
-#     displayName: 'Install dependencies'
-#   - script: |
-#       pip install pytest pytest-azurepipelines
-#       # cd bindings/python && pytest
-#     displayName: 'pytest'
-#   - script: |
-#       cd bindings/python && python setup.py bdist_wheel
-#     displayName: 'Build / Artifact creation'
-#   - task: CopyFiles@2
-#     inputs:
-#       targetFolder: $(Build.ArtifactStagingDirectory)
-#   - task: PublishBuildArtifacts@1
-#     inputs:
-#       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-#       ArtifactName: 'dist'
-#       publishLocation: 'Container'
 
 - job: MacOS64
   pool:
@@ -136,14 +66,13 @@ jobs:
   - script: |
       python -m pip install --upgrade pip
       python -m pip install wheel
+      brew install cmocka
     displayName: 'Install dependencies'
   - script: |
-      pip install pytest pytest-azurepipelines
-      # cd bindings/python && pytest
-    displayName: 'pytest'
-  - script: |
       cd bindings/python && python setup.py bdist_wheel
-    displayName: 'Build / Artifact creation'
+      cd ../..
+      make test
+    displayName: 'Build / Test / Artifact creation'
   - task: CopyFiles@2
     inputs:
       targetFolder: $(Build.ArtifactStagingDirectory)
