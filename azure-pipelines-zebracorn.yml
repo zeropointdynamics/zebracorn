@@ -120,7 +120,7 @@ jobs:
       cp msvc\distro\$(PLATFORM)\unicorn.* bindings\python\unicorn\lib\
       cp -r msvc\distro\include\unicorn bindings\python\unicorn\include\
       cd bindings\python
-      set LIBUNICORN_PATH=LIBUNICORN_ALREADY_BUILT
+      $env:LIBUNICORN_PATH = LIBUNICORN_ALREADY_BUILT
       python setup.py bdist_wheel
     displayName: 'Python / Artifact creation'
   - powershell: |
