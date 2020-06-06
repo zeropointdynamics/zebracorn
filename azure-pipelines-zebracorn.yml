@@ -54,6 +54,34 @@ jobs:
       ArtifactName: 'dist'
       publishLocation: 'Container'
 
+- job: MacOS64
+  pool:
+    vmImage: 'macOS-latest'
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+    displayName: 'Use Python 3.6'
+  - script: |
+      python -m pip install --upgrade pip
+      python -m pip install wheel
+    displayName: 'Install dependencies'
+  - script: |
+      pip install pytest pytest-azurepipelines
+      # cd bindings/python && pytest
+    displayName: 'pytest'
+  - script: |
+      cd bindings/python && python setup.py bdist_wheel
+    displayName: 'Build / Artifact creation'
+  - task: CopyFiles@2
+    inputs:
+      targetFolder: $(Build.ArtifactStagingDirectory)
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'dist'
+      publishLocation: 'Container'
+
 - job: Windows
   pool:
     vmImage: 'windows-2019'
@@ -71,20 +99,29 @@ jobs:
   - task: UsePythonVersion@0
     inputs:
       versionSpec: $(PYTHON_VERSION)
-      addToPath: true
       architecture: $(PYTHON_ARCH)
+      addToPath: true
     displayName: 'Use Python $(PYTHON_VERSION) $(PYTHON_ARCH)'
   - script: python -m pip install --upgrade pip setuptools wheel pytest
     displayName: 'Install dependencies'
   - task: VSBuild@1
     inputs:
       solution: 'msvc\*.sln'
-      vsVersion: '14.0' 
+      vsVersion: '16.0' 
       platform: $(PLATFORM)
       configuration: Release
+      clean: true
     displayName: 'Build / Artifact creation'
   - powershell: |
-      dir
+      Remove-Item .\bindings\python\unicorn\lib -Recurse -ErrorAction Ignore
+      Remove-Item .\bindings\python\unicorn\include -Recurse -ErrorAction Ignore
+      New-Item -ItemType Directory -Force -Path .\bindings\python\unicorn\lib
+      New-Item -ItemType Directory -Force -Path .\bindings\python\unicorn\include
+      cp msvc\distro\$(PLATFORM)\unicorn.* bindings\python\unicorn\lib\
+      cp -r msvc\distro\include\unicorn bindings\python\unicorn\include\
+      cd bindings\python
+      set LIBUNICORN_PATH=LIBUNICORN_ALREADY_BUILT
+      python setup.py bdist_wheel
     displayName: 'Python / Artifact creation'
   - powershell: |
       # pytest
