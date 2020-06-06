@@ -9,23 +9,24 @@ jobs:
   strategy:
     matrix:
       32bit:
-        containerImage: dockcross/manylinux1-x86:latest
+        containerImage: dockcross/manylinux2010-x86:latest
+        PYTHON: /opt/python/cp36-cp36m/bin/python
       64bit:
-        containerImage: dockcross/manylinux1-x64:latest
+        containerImage: dockcross/manylinux2010-x64:latest
+        PYTHON: /opt/python/cp36-cp36m/bin/python
   container: $[ variables['containerImage'] ]
   steps:
   - script: |
-      ls -alh /opt/python/*
-      ls -alh /opt/python/*/bin
-      /opt/python/python3.6/bin/python -m pip install --upgrade pip
-      /opt/python/python3.6/bin/python -m pip install wheel
+      ls /opt/python/*
+      $(PYTHON) -m pip install --upgrade pip
+      $(PYTHON) -m pip install wheel
     displayName: 'Install dependencies'
   - script: |
       pip install pytest pytest-azurepipelines
       # cd bindings/python && pytest
     displayName: 'pytest'
   - script: |
-      cd bindings/python && /opt/python/python3.6/bin/python setup.py bdist_wheel
+      cd bindings/python && $(PYTHON) setup.py bdist_wheel
     displayName: 'Build / Artifact creation'
   - task: CopyFiles@2
     inputs:
