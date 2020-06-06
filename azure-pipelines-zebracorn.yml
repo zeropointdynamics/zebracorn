@@ -2,48 +2,28 @@ trigger:
 - master
 
 jobs:
-- job: Linux32
-  pool:
-    vmImage: 'ubuntu-18.04'
-  steps:
-  - script: |
-           docker pull i386/ubuntu:bionic
-           docker run -v $(pwd):/zebracorn i386/ubuntu:bionic /bin/bash -c "cd zebracorn && \
-           apt-get -y update && \
-           apt-get -y install curl python3.6-dev python3.6 python3-distutils pkg-config build-essential && \
-           curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-           python3.6 get-pip.py && \
-           pip3 --version && \
-           pip3 install setuptools wheel pytest --user && \
-           cd bindings/python && python3 setup.py bdist_wheel"
-    displayName: 'Build / Artifact Creation'
-  - task: CopyFiles@2
-    inputs:
-      targetFolder: $(Build.ArtifactStagingDirectory)
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'dist'
-      publishLocation: 'Container'
 
-- job: Linux64
+- job: ManyLinux
   pool:
-    vmImage: 'ubuntu-18.04'
+    vmImage: 'ubuntu-latest'
+  strategy:
+    matrix:
+      32bit:
+        containerImage: dockcross/manylinux-x86:latest
+      64bit:
+        containerImage: dockcross/manylinux-x64:latest
+  container: $[ variables['containerImage'] ]
   steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.6'
-    displayName: 'Use Python 3.6'
   - script: |
-      python -m pip install --upgrade pip
-      python -m pip install wheel
+      python3.6 -m pip install --upgrade pip
+      python3.6 -m pip install wheel
     displayName: 'Install dependencies'
   - script: |
       pip install pytest pytest-azurepipelines
       # cd bindings/python && pytest
     displayName: 'pytest'
   - script: |
-      cd bindings/python && python setup.py bdist_wheel
+      cd bindings/python && python3.6 setup.py bdist_wheel
     displayName: 'Build / Artifact creation'
   - task: CopyFiles@2
     inputs:
@@ -53,6 +33,58 @@ jobs:
       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
       ArtifactName: 'dist'
       publishLocation: 'Container'
+
+# - job: Linux32
+#   pool:
+#     vmImage: 'ubuntu-18.04'
+#   steps:
+#   - script: |
+#            docker pull i386/ubuntu:bionic
+#            docker run -v $(pwd):/zebracorn i386/ubuntu:bionic /bin/bash -c "cd zebracorn && \
+#            apt-get -y update && \
+#            apt-get -y install curl python3.6-dev python3.6 python3-distutils pkg-config build-essential && \
+#            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+#            python3.6 get-pip.py && \
+#            pip3 --version && \
+#            pip3 install setuptools wheel pytest --user && \
+#            cd bindings/python && python3 setup.py bdist_wheel"
+#     displayName: 'Build / Artifact Creation'
+#   - task: CopyFiles@2
+#     inputs:
+#       targetFolder: $(Build.ArtifactStagingDirectory)
+#   - task: PublishBuildArtifacts@1
+#     inputs:
+#       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+#       ArtifactName: 'dist'
+#       publishLocation: 'Container'
+
+# - job: Linux64
+#   pool:
+#     vmImage: 'ubuntu-18.04'
+#   steps:
+#   - task: UsePythonVersion@0
+#     inputs:
+#       versionSpec: '3.6'
+#     displayName: 'Use Python 3.6'
+#   - script: |
+#       python -m pip install --upgrade pip
+#       python -m pip install wheel
+#     displayName: 'Install dependencies'
+#   - script: |
+#       pip install pytest pytest-azurepipelines
+#       # cd bindings/python && pytest
+#     displayName: 'pytest'
+#   - script: |
+#       cd bindings/python && python setup.py bdist_wheel
+#     displayName: 'Build / Artifact creation'
+#   - task: CopyFiles@2
+#     inputs:
+#       targetFolder: $(Build.ArtifactStagingDirectory)
+#   - task: PublishBuildArtifacts@1
+#     inputs:
+#       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+#       ArtifactName: 'dist'
+#       publishLocation: 'Container'
 
 - job: MacOS64
   pool:
@@ -120,7 +152,7 @@ jobs:
       cp msvc\distro\$(PLATFORM)\unicorn.* bindings\python\unicorn\lib\
       cp -r msvc\distro\include\unicorn bindings\python\unicorn\include\
       cd bindings\python
-      $env:LIBUNICORN_PATH = LIBUNICORN_ALREADY_BUILT
+      $env:LIBUNICORN_PATH = "LIBUNICORN_ALREADY_BUILT"
       python setup.py bdist_wheel
     displayName: 'Python / Artifact creation'
   - powershell: |
