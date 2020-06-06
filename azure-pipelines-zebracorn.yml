@@ -4,38 +4,74 @@ trigger:
 jobs:
 
 - job: ManyLinux
-  pool:
-    vmImage: 'ubuntu-latest'
   strategy:
     matrix:
-      32bit:
-        containerImage: dockcross/manylinux2010-x86:latest
+      64Bit2010:
+        arch: x86_64
+        plat: manylinux2010_x86_64
+        image: quay.io/pypa/manylinux2010_x86_64
+        python.architecture: x64
+        package_name: zebracorn
         PYTHON: /opt/python/cp36-cp36m/bin/python
-      64bit:
-        containerImage: dockcross/manylinux2010-x64:latest
+      64Bit:
+        arch: x86_64
+        plat: manylinux1_x86_64
+        image: quay.io/pypa/manylinux1_x86_64
+        python.architecture: x64
+        package_name: zebracorn
         PYTHON: /opt/python/cp36-cp36m/bin/python
-  container: $[ variables['containerImage'] ]
+      32Bit:
+        arch: i686
+        plat: manylinux1_i686
+        image: quay.io/pypa/manylinux1_i686
+        python.architecture: x86
+        package_name: zebracorn
+        PYTHON: /opt/python/cp36-cp36m/bin/python
+  pool:
+    vmImage: 'ubuntu-16.04'
   steps:
-  - script: |
-      ls /opt/python/*
-      $(PYTHON) -m pip install --upgrade pip
-      $(PYTHON) -m pip install wheel
-    displayName: 'Install dependencies'
-  - script: |
-      pip install pytest pytest-azurepipelines
-      # cd bindings/python && pytest
-    displayName: 'pytest'
-  - script: |
-      cd bindings/python && $(PYTHON) setup.py bdist_wheel
-    displayName: 'Build / Artifact creation'
-  - task: CopyFiles@2
-    inputs:
-      targetFolder: $(Build.ArtifactStagingDirectory)
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'dist'
-      publishLocation: 'Container'
+    - script: |
+        set -ex
+        docker run -e PLAT=$(plat) -e package_name=$(package_name) --rm -v `pwd`:/repo $(image) /bin/bash -c "cd repo && \
+        cd bindings/python && $(PYTHON) setup.py bdist_wheel"
+        ls -alh
+        mkdir -p dist
+        cp bindings/python/dist/*.whl dist/
+      displayName: Build wheels
+    - task: PublishPipelineArtifact@0
+      inputs:
+        artifactName: 'artifact_$(Agent.OS)_$(Agent.JobName)_$(python.architecture)'
+        targetPath: 'dist'
+
+# - job: ManyLinux
+#   pool:
+#     vmImage: 'ubuntu-latest'
+#   strategy:
+#     matrix:
+#       32bit:
+#         containerImage: dockcross/manylinux2010-x86:latest
+#         PYTHON: /opt/python/cp36-cp36m/bin/python
+#       64bit:
+#         containerImage: dockcross/manylinux2010-x64:latest
+#         PYTHON: /opt/python/cp36-cp36m/bin/python
+#   container: $[ variables['containerImage'] ]
+#   steps:
+#   - script: |
+#       ls /opt/python/*
+#       $(PYTHON) -m pip install --upgrade pip
+#       $(PYTHON) -m pip install wheel
+#     displayName: 'Install dependencies'
+#   - script: |
+#       cd bindings/python && $(PYTHON) setup.py bdist_wheel
+#     displayName: 'Build / Artifact creation'
+#   - task: CopyFiles@2
+#     inputs:
+#       targetFolder: $(Build.ArtifactStagingDirectory)
+#   - task: PublishBuildArtifacts@1
+#     inputs:
+#       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+#       ArtifactName: 'dist'
+#       publishLocation: 'Container'
 
 # - job: Linux32
 #   pool:
