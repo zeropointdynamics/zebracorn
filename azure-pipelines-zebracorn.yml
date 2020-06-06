@@ -44,7 +44,7 @@ jobs:
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
         cd ../.. && \
-        yum install libcmocka-devel && \
+        yum -y install libcmocka-devel && \
         make test"
         ls -alh
         mkdir -p dist
