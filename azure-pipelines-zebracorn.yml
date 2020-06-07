@@ -46,9 +46,11 @@ jobs:
     - script: |
         set -ex
         docker run -e PLAT=$(plat) -e package_name=$(package_name) --rm -v `pwd`:/repo $(image) /bin/bash -c "cd repo && \
-        $(PYTHON) -m pip install --upgrade pip && \
-        $(PYTHON) -m pip install --upgrade setuptools wheel && \
-        cd bindings/python && $(PYTHON) setup.py bdist_wheel && \
+        $(PYTHON) -m venv ~/.venv/zebracorn
+        source ~/.venv/zebracorn/bin/activate
+        python -m pip install --upgrade pip && \
+        python -m pip install --upgrade setuptools wheel && \
+        cd bindings/python && python setup.py bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
         cd ../.. && \
@@ -82,7 +84,7 @@ jobs:
       cp dist/*.whl ../../wheelhouse/
       cd ../..
       brew install cmocka
-      ln -s /usr/local/bin/gobjcopy /usr/local/bin/objcopy
+      ln -s /usr/bin/gobjcopy /usr/local/bin/objcopy
       make test
     displayName: 'Build / Test / Artifact creation'
   - task: CopyFiles@2
@@ -139,6 +141,7 @@ jobs:
       cd ..\..
       $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin;" + $env:PATH
       $env:CROSS = "mingw32-"
+      dir C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\
       make -C bindings test
     displayName: 'Python / Artifact creation'
   - powershell: |
