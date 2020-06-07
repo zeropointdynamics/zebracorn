@@ -42,8 +42,8 @@ jobs:
     - script: |
         set -ex
         docker run -e PLAT=$(plat) -e package_name=$(package_name) --rm -v `pwd`:/repo $(image) /bin/bash -c "cd repo && \
-        $(PYTHON) -m pip install --upgrade pip
-        $(PYTHON) -m pip install setuptools wheel
+        $(PYTHON) -m pip install --upgrade pip && \
+        $(PYTHON) -m pip install setuptools wheel && \
         cd bindings/python && $(PYTHON) setup.py bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
@@ -71,14 +71,17 @@ jobs:
   - script: |
       python -m pip install --upgrade pip
       python -m pip install wheel
-      # brew install cmocka
-      ./install-cmocka-linux.sh
+      brew install cmocka
+      ldconfig /usr/local/lib
+      cp /usr/local/include/cmocka.h /usr/include/
+
     displayName: 'Install dependencies'
   - script: |
       mkdir -p wheelhouse
       cd bindings/python && python setup.py bdist_wheel
       cp dist/*.whl ../../wheelhouse/
       cd ../..
+      # ./install-cmocka-linux.sh
       make test
     displayName: 'Build / Test / Artifact creation'
   - task: CopyFiles@2
@@ -133,6 +136,7 @@ jobs:
       python setup.py bdist_wheel
       cp dist\*.whl ..\..\wheelhouse\
       cd ..\..
+      $env:CROSS = "mingw32"
       make -C bindings test
     displayName: 'Python / Artifact creation'
   - powershell: |
