@@ -65,7 +65,6 @@ jobs:
         yum -y install libcmocka-devel && \
         make test"
         mkdir -p dist
-        cp bindings/python/dist/*.tar.gz dist/
         cp wheelhouse/*.whl dist/
       displayName: 'Build / Test / Artifact creation'
     - task: PublishPipelineArtifact@0
