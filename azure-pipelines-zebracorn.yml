@@ -39,11 +39,15 @@ jobs:
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.6'
+      displayName: 'Use Python 3.6'
     - script: |
         set -ex
         docker run -e PLAT=$(plat) -e package_name=$(package_name) --rm -v `pwd`:/repo $(image) /bin/bash -c "cd repo && \
         $(PYTHON) -m pip install --upgrade pip && \
-        $(PYTHON) -m pip install setuptools wheel && \
+        $(PYTHON) -m pip install --upgrade setuptools wheel && \
         cd bindings/python && $(PYTHON) setup.py bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
@@ -77,9 +81,8 @@ jobs:
       cd bindings/python && python setup.py bdist_wheel
       cp dist/*.whl ../../wheelhouse/
       cd ../..
-      # ./install-cmocka-linux.sh
       brew install cmocka
-      ls /usr/local/include/cm*
+      ln -s /usr/local/bin/gobjcopy /usr/local/bin/objcopy
       make test
     displayName: 'Build / Test / Artifact creation'
   - task: CopyFiles@2
@@ -134,6 +137,7 @@ jobs:
       python setup.py bdist_wheel
       cp dist\*.whl ..\..\wheelhouse\
       cd ..\..
+      $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin;" + $env:PATH
       $env:CROSS = "mingw32-"
       make -C bindings test
     displayName: 'Python / Artifact creation'
