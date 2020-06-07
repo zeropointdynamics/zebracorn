@@ -56,7 +56,6 @@ jobs:
         cd ../.. && \
         yum -y install libcmocka-devel && \
         make test"
-        ls -alh
         mkdir -p dist
         cp wheelhouse/*.whl dist/
       displayName: 'Build / Test / Artifact creation'
@@ -79,12 +78,13 @@ jobs:
 
     displayName: 'Install dependencies'
   - script: |
-      mkdir -p wheelhouse
+      mkdir -p dist
       cd bindings/python && python setup.py bdist_wheel
-      cp dist/*.whl ../../wheelhouse/
+      cp dist/*.whl ../../dist/
       cd ../..
       brew install cmocka
-      ln -s /usr/bin/gobjcopy /usr/local/bin/objcopy
+      brew install binutils
+      # ln -s /usr/bin/gobjcopy /usr/local/bin/objcopy
       make test
     displayName: 'Build / Test / Artifact creation'
   - task: CopyFiles@2
@@ -140,8 +140,9 @@ jobs:
       cp dist\*.whl ..\..\wheelhouse\
       cd ..\..
       $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin;" + $env:PATH
-      $env:CROSS = "mingw32-"
+      # $env:CROSS = "mingw32-"
       dir C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\
+      cp C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\objcopy C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\gobjcopy
       make -C bindings test
     displayName: 'Python / Artifact creation'
   - powershell: |
