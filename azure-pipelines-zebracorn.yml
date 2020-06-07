@@ -1,6 +1,8 @@
 trigger:
 - master
 
+# Reference: https://iscinumpy.gitlab.io/post/azure-devops-python-wheels/
+
 jobs:
 
 - job: ManyLinux
@@ -50,18 +52,20 @@ jobs:
         source ~/.venv/zebracorn/bin/activate
         python -m pip install --upgrade pip && \
         python -m pip install --upgrade setuptools wheel && \
-        cd bindings/python && python setup.py bdist_wheel && \
+        cd bindings/python && python setup.py sdist bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
         cd ../.. && \
         yum -y install libcmocka-devel && \
         make test"
         mkdir -p dist
+        cp bindings/python/dist/*.tar.gz dist/
         cp wheelhouse/*.whl dist/
       displayName: 'Build / Test / Artifact creation'
     - task: PublishPipelineArtifact@0
       inputs:
-        artifactName: 'artifact_$(Agent.OS)_$(Agent.JobName)_$(python.architecture)'
+        # artifactName: 'artifact_$(Agent.OS)_$(Agent.JobName)_$(python.architecture)'
+        artifactName: 'dist'
         targetPath: 'dist'
 
 - job: MacOS64
@@ -87,17 +91,20 @@ jobs:
       export PATH="/usr/local/opt/binutils/bin:$PATH"
       export LDFLAGS="-L/usr/local/opt/binutils/lib"
       export CPPFLAGS="-I/usr/local/opt/binutils/include"
-      # ln -s /usr/bin/gobjcopy /usr/local/bin/objcopy
       make test
     displayName: 'Build / Test / Artifact creation'
-  - task: CopyFiles@2
+  # - task: CopyFiles@2
+  #   inputs:
+  #     targetFolder: $(Build.ArtifactStagingDirectory)
+  # - task: PublishBuildArtifacts@1
+  #   inputs:
+  #     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+  #     ArtifactName: 'buildtree'
+  #     publishLocation: 'Container'
+  - task: PublishPipelineArtifact@0
     inputs:
-      targetFolder: $(Build.ArtifactStagingDirectory)
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'dist'
-      publishLocation: 'Container'
+      artifactName: 'dist'
+      targetPath: 'dist'
 
 - job: Windows
   pool:
@@ -134,29 +141,32 @@ jobs:
       Remove-Item .\bindings\python\unicorn\include -Recurse -ErrorAction Ignore
       New-Item -ItemType Directory -Force -Path .\bindings\python\unicorn\lib
       New-Item -ItemType Directory -Force -Path .\bindings\python\unicorn\include
-      New-Item -ItemType Directory -Force -Path .\wheelhouse
+      New-Item -ItemType Directory -Force -Path .\dist
       cp msvc\distro\$(PLATFORM)\unicorn.* bindings\python\unicorn\lib\
       cp -r msvc\distro\include\unicorn bindings\python\unicorn\include\
       cd bindings\python
       $env:LIBUNICORN_PATH = "LIBUNICORN_ALREADY_BUILT"
       python setup.py bdist_wheel
-      cp dist\*.whl ..\..\wheelhouse\
+      cp dist\*.whl ..\..\dist\
       cd ..\..
       $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin;" + $env:PATH
-      # $env:CROSS = "mingw32-"
-      dir C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\
+      $env:PATH = "msvc\\;" + $env:PATH
       cp C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\objcopy.exe C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\gobjcopy.exe
       cp C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\gcc.exe C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\cc.exe
-      make -C bindings test
+      # make -C bindings test
     displayName: 'Python / Artifact creation'
   - powershell: |
       # pytest
     displayName: 'pytest'
-  - task: CopyFiles@2
+  # - task: CopyFiles@2
+  #   inputs:
+  #     targetFolder: $(Build.ArtifactStagingDirectory)
+  # - task: PublishBuildArtifacts@1
+  #   inputs:
+  #     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+  #     ArtifactName: 'buildtree'
+  #     publishLocation: 'Container'
+  - task: PublishPipelineArtifact@0
     inputs:
-      targetFolder: $(Build.ArtifactStagingDirectory)
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'dist'
-      publishLocation: 'Container'
+      artifactName: 'dist'
+      targetPath: 'dist'
