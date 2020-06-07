@@ -84,6 +84,9 @@ jobs:
       cd ../..
       brew install cmocka
       brew install binutils
+      export PATH="/usr/local/opt/binutils/bin:$PATH"
+      export LDFLAGS="-L/usr/local/opt/binutils/lib"
+      export CPPFLAGS="-I/usr/local/opt/binutils/include"
       # ln -s /usr/bin/gobjcopy /usr/local/bin/objcopy
       make test
     displayName: 'Build / Test / Artifact creation'
@@ -142,7 +145,7 @@ jobs:
       $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin;" + $env:PATH
       # $env:CROSS = "mingw32-"
       dir C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\
-      cp C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\objcopy C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\gobjcopy
+      cp C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\objcopy.exe C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\gobjcopy.exe
       make -C bindings test
     displayName: 'Python / Artifact creation'
   - powershell: |
