@@ -5,25 +5,31 @@ trigger:
 
 jobs:
 
+- job: Source
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+    displayName: 'Use Python 3.6'
+  - script: |
+      python -m pip install --upgrade pip
+      python -m pip install wheel
+    displayName: 'Install dependencies'
+  - script: |
+      mkdir -p dist
+      cd bindings/python && python setup.py sdist
+      cp dist/*.tar.gz ../../dist/
+    displayName: 'sdist Artifact creation'
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: 'artifact_Source'
+      targetPath: 'dist'
+
 - job: ManyLinux
   strategy:
     matrix:
-      # The manylinux2010 wheels are eligible for the manylinux1 tag,
-      # so we don't need to build manylinux1 at this time.
-      # 32Bit:
-      #   arch: i686
-      #   plat: manylinux1_i686
-      #   image: quay.io/pypa/manylinux1_i686
-      #   python.architecture: x86
-      #   package_name: zebracorn
-      #   PYTHON: /opt/python/cp36-cp36m/bin/python
-      # 64Bit:
-      #   arch: x86_64
-      #   plat: manylinux1_x86_64
-      #   image: quay.io/pypa/manylinux1_x86_64
-      #   python.architecture: x64
-      #   package_name: zebracorn
-      #   PYTHON: /opt/python/cp36-cp36m/bin/python
       32Bit2010:
         arch: i686
         plat: manylinux2010_i686
@@ -55,7 +61,6 @@ jobs:
         cd bindings/python && python setup.py bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
-        python setup.py sdist && \
         cd ../.. && \
         yum -y install libcmocka-devel && \
         make test"
@@ -65,7 +70,7 @@ jobs:
       displayName: 'Build / Test / Artifact creation'
     - task: PublishPipelineArtifact@0
       inputs:
-        artifactName: 'artifact_ManyLinux_$(strategy.name)'
+        artifactName: 'artifact_ManyLinux_$(arch)'
         targetPath: 'dist'
 
 - job: MacOS64
@@ -93,14 +98,6 @@ jobs:
       export CPPFLAGS="-I/usr/local/opt/binutils/include"
       make test
     displayName: 'Build / Test / Artifact creation'
-  # - task: CopyFiles@2
-  #   inputs:
-  #     targetFolder: $(Build.ArtifactStagingDirectory)
-  # - task: PublishBuildArtifacts@1
-  #   inputs:
-  #     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-  #     ArtifactName: 'buildtree'
-  #     publishLocation: 'Container'
   - task: PublishPipelineArtifact@0
     inputs:
       artifactName: 'artifact_MacOS64'
@@ -149,8 +146,8 @@ jobs:
       python setup.py bdist_wheel
       cp dist\*.whl ..\..\dist\
       cd ..\..
-      $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin;" + $env:PATH
       $env:PATH = "msvc\\;" + $env:PATH
+      $env:PATH = "C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin;" + $env:PATH
       cp C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\objcopy.exe C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\gobjcopy.exe
       cp C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\gcc.exe C:\\ProgramData\\chocolatey\\lib\\mingw\\tools\\install\\mingw64\\bin\\cc.exe
       # make -C bindings test
@@ -158,15 +155,7 @@ jobs:
   - powershell: |
       # pytest
     displayName: 'pytest'
-  # - task: CopyFiles@2
-  #   inputs:
-  #     targetFolder: $(Build.ArtifactStagingDirectory)
-  # - task: PublishBuildArtifacts@1
-  #   inputs:
-  #     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-  #     ArtifactName: 'buildtree'
-  #     publishLocation: 'Container'
   - task: PublishPipelineArtifact@0
     inputs:
-      artifactName: 'artifact_Windows_$(strategy.name)'
+      artifactName: 'artifact_Windows_$(PLATFORM)'
       targetPath: 'dist'
