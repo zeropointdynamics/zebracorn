@@ -6,25 +6,27 @@ jobs:
 - job: ManyLinux
   strategy:
     matrix:
-      32Bit:
-        arch: i686
-        plat: manylinux1_i686
-        image: quay.io/pypa/manylinux1_i686
-        python.architecture: x86
-        package_name: zebracorn
-        PYTHON: /opt/python/cp36-cp36m/bin/python
+      # The manylinux2010 wheels are eligible for the manylinux1 tag,
+      # so we don't need to build manylinux1 at this time.
+      # 32Bit:
+      #   arch: i686
+      #   plat: manylinux1_i686
+      #   image: quay.io/pypa/manylinux1_i686
+      #   python.architecture: x86
+      #   package_name: zebracorn
+      #   PYTHON: /opt/python/cp36-cp36m/bin/python
+      # 64Bit:
+      #   arch: x86_64
+      #   plat: manylinux1_x86_64
+      #   image: quay.io/pypa/manylinux1_x86_64
+      #   python.architecture: x64
+      #   package_name: zebracorn
+      #   PYTHON: /opt/python/cp36-cp36m/bin/python
       32Bit2010:
         arch: i686
         plat: manylinux2010_i686
         image: quay.io/pypa/manylinux2010_i686
         python.architecture: x86
-        package_name: zebracorn
-        PYTHON: /opt/python/cp36-cp36m/bin/python
-      64Bit:
-        arch: x86_64
-        plat: manylinux1_x86_64
-        image: quay.io/pypa/manylinux1_x86_64
-        python.architecture: x64
         package_name: zebracorn
         PYTHON: /opt/python/cp36-cp36m/bin/python
       64Bit2010:
@@ -40,11 +42,14 @@ jobs:
     - script: |
         set -ex
         docker run -e PLAT=$(plat) -e package_name=$(package_name) --rm -v `pwd`:/repo $(image) /bin/bash -c "cd repo && \
+        $(PYTHON) -m pip install --upgrade pip
+        $(PYTHON) -m pip install setuptools wheel
         cd bindings/python && $(PYTHON) setup.py bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
         cd ../.. && \
         yum -y install libcmocka-devel && \
+        # ./install-cmocka-linux.sh && \
         make test"
         ls -alh
         mkdir -p dist
@@ -66,10 +71,13 @@ jobs:
   - script: |
       python -m pip install --upgrade pip
       python -m pip install wheel
-      brew install cmocka
+      # brew install cmocka
+      ./install-cmocka-linux.sh
     displayName: 'Install dependencies'
   - script: |
+      mkdir -p wheelhouse
       cd bindings/python && python setup.py bdist_wheel
+      cp dist/*.whl ../../wheelhouse/
       cd ../..
       make test
     displayName: 'Build / Test / Artifact creation'
@@ -117,11 +125,15 @@ jobs:
       Remove-Item .\bindings\python\unicorn\include -Recurse -ErrorAction Ignore
       New-Item -ItemType Directory -Force -Path .\bindings\python\unicorn\lib
       New-Item -ItemType Directory -Force -Path .\bindings\python\unicorn\include
+      New-Item -ItemType Directory -Force -Path .\wheelhouse
       cp msvc\distro\$(PLATFORM)\unicorn.* bindings\python\unicorn\lib\
       cp -r msvc\distro\include\unicorn bindings\python\unicorn\include\
       cd bindings\python
       $env:LIBUNICORN_PATH = "LIBUNICORN_ALREADY_BUILT"
       python setup.py bdist_wheel
+      cp dist\*.whl ..\..\wheelhouse\
+      cd ..\..
+      make -C bindings test
     displayName: 'Python / Artifact creation'
   - powershell: |
       # pytest
