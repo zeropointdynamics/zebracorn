@@ -49,7 +49,6 @@ jobs:
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
         cd ../.. && \
         yum -y install libcmocka-devel && \
-        # ./install-cmocka-linux.sh && \
         make test"
         ls -alh
         mkdir -p dist
@@ -71,9 +70,6 @@ jobs:
   - script: |
       python -m pip install --upgrade pip
       python -m pip install wheel
-      brew install cmocka
-      ldconfig /usr/local/lib
-      cp /usr/local/include/cmocka.h /usr/include/
 
     displayName: 'Install dependencies'
   - script: |
@@ -82,6 +78,8 @@ jobs:
       cp dist/*.whl ../../wheelhouse/
       cd ../..
       # ./install-cmocka-linux.sh
+      brew install cmocka
+      ls /usr/local/include/cm*
       make test
     displayName: 'Build / Test / Artifact creation'
   - task: CopyFiles@2
@@ -136,7 +134,7 @@ jobs:
       python setup.py bdist_wheel
       cp dist\*.whl ..\..\wheelhouse\
       cd ..\..
-      $env:CROSS = "mingw32"
+      $env:CROSS = "mingw32-"
       make -C bindings test
     displayName: 'Python / Artifact creation'
   - powershell: |
