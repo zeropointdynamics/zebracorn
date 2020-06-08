@@ -4,7 +4,6 @@ trigger:
 # Reference: https://iscinumpy.gitlab.io/post/azure-devops-python-wheels/
 
 variables:
-# setup.py code to change the namespace to zebracorn
 - name: patch_info
   value: |+
     import codecs
@@ -88,11 +87,11 @@ variables:
         patch(\"setup.py\", \"setup(\", f.read())
         f.close()
         patch(os.path.join(TEST_DIR, \"*.py\"), \"unicorn\", \"zebracorn\")
-        patch(os.path.join(SAMPLE_DIR, \"*.py\"), \"unicorn\", \"zebracorn\")
+        patch(os.path.join(SAMPLE_DIR, \"sample_*.py\"), \"unicorn\", \"zebracorn\")
+        patch(os.path.join(SAMPLE_DIR, \"shellcode.py\"), \"unicorn\", \"zebracorn\")
         a = os.path.join(HERE, \"zebracorn\")
         b = os.path.join(HERE, \"unicorn\")
-        os.mkdir(a)
-        shutil.copytree(b, a)
+        os.rename(b, a)
 
 
     patch_zebracorn(sys.argv[1])
@@ -153,8 +152,11 @@ jobs:
         python -m pip install --upgrade pip && \
         python -m pip install --upgrade setuptools wheel && \
         cd bindings/python && \
-        (echo \"$(patcher)\") > patcher.py && \
-        (echo \"$(patch_info)\") > patch.info && \
+        echo "$(patch_info)" && \
+        echo "$(patcher)" && \
+        (echo "$(patcher)") > patcher.py && \
+        (echo "$(patch_info)") > patch.info && \
+        cat patcher.py && \
         python patcher.py patch.info && \
         python setup.py bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
@@ -186,10 +188,8 @@ jobs:
   - script: |
       mkdir -p dist
       cd bindings/python
-      echo "GO"
       echo "$(patch_info)"
       echo "$(patcher)"
-      echo "GO"
       (echo "$(patcher)") > patcher.py
       (echo "$(patch_info)") > patch.info
       cat patcher.py
