@@ -89,6 +89,7 @@ variables:
         patch(os.path.join(TEST_DIR, \"*.py\"), \"unicorn\", \"zebracorn\")
         patch(os.path.join(SAMPLE_DIR, \"sample_*.py\"), \"unicorn\", \"zebracorn\")
         patch(os.path.join(SAMPLE_DIR, \"shellcode.py\"), \"unicorn\", \"zebracorn\")
+        patch(os.path.join(SAMPLE_DIR, \"..\", \"const_generator.py\"), \"python/unicorn\", \"python/zebracorn\")
         a = os.path.join(HERE, \"zebracorn\")
         b = os.path.join(HERE, \"unicorn\")
         os.rename(b, a)
@@ -146,18 +147,20 @@ jobs:
       displayName: 'Use Python 3.6'
     - script: |
         set -ex
+        cd bindings/python
+        echo "$(patch_info)"
+        echo "$(patcher)"
+        (echo "$(patcher)") > patcher.py
+        (echo "$(patch_info)") > patch.info
+        cat patcher.py
+        python patcher.py patch.info
+        cd ../..
         docker run -e PLAT=$(plat) -e package_name=$(package_name) --rm -v `pwd`:/repo $(image) /bin/bash -c "cd repo && \
         $(PYTHON) -m venv ~/.venv/zebracorn
         source ~/.venv/zebracorn/bin/activate
         python -m pip install --upgrade pip && \
         python -m pip install --upgrade setuptools wheel && \
         cd bindings/python && \
-        echo "$(patch_info)" && \
-        echo "$(patcher)" && \
-        (echo "$(patcher)") > patcher.py && \
-        (echo "$(patch_info)") > patch.info && \
-        cat patcher.py && \
-        python patcher.py patch.info && \
         python setup.py bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
