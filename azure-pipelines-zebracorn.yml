@@ -3,6 +3,99 @@ trigger:
 
 # Reference: https://iscinumpy.gitlab.io/post/azure-devops-python-wheels/
 
+variables:
+# setup.py code to change the namespace to zebracorn
+- name: patch_info
+  value: 'import codecs
+import os
+import sys
+
+HERE = os.path.abspath(os.path.dirname(__file__))
+LIBS_DIR = os.path.join(ROOT_DIR, "zebracorn", "lib")
+HEADERS_DIR = os.path.join(ROOT_DIR, "zebracorn", "include")
+
+def read(*parts):
+    with codecs.open(os.path.join(HERE, *parts), "rb", "utf-8") as f:
+        return f.read()
+
+LONG = read(os.path.join("..", os.path.join("..", "README.md")))
+
+setup(
+    provides=["zebracorn"],
+    packages=["zebracorn"],
+    name="zebracorn",
+    version=VERSION,
+    author="Zeropoint Dynamics",
+    author_email="zelos@zeropointdynamics.com",
+    description="A Unicorn CPU emulator fork customized for the zelos binary emulator.",
+    long_description=LONG,
+    long_description_content_type="text/markdown",
+    url="https://github.com/zeropointdynamics/zebracorn",
+    classifiers=[
+        "Topic :: Security",
+        "Topic :: System :: Emulators",
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Information Technology",
+        "Intended Audience :: Developers",
+        "Operating System :: MacOS :: MacOS X",
+        "Operating System :: Microsoft :: Windows",
+        "Operating System :: POSIX :: Linux",
+        "Natural Language :: English",
+        "License :: OSI Approved :: GNU Affero General Public License v3",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+    ],
+    requires=["ctypes"],
+    cmdclass=cmdclass,
+    zip_safe=True,
+    include_package_data=True,
+    is_pure=True,
+    package_data={
+        "zebracorn": ["lib/*", "include/unicorn/*"]
+    }
+)
+sys.exit(0)'
+- name: patcher
+  value: 'import glob
+import os
+import shutil
+import sys
+
+HERE = os.path.abspath(os.path.dirname(__file__))
+REPO_DIR = os.path.join(os.path.join(HERE, ".."), "..")
+TEST_DIR = os.path.join(os.path.join(REPO_DIR, "tests"), "regress")
+SAMPLE_DIR = os.path.join(os.path.join(REPO_DIR, "bindings"), "python")
+
+
+def patch(glob_value, find, replace):
+    for filepath in glob.iglob(glob_value, recursive=False):
+        with open(filepath) as file:
+            s = file.read()
+        s = s.replace(find, replace)
+        with open(filepath, "w") as file:
+            file.write(s)
+
+
+def patch_zebracorn(patchfile):
+    f = open(patchfile)
+    patch("setup.py", "setup(", f.read())
+    f.close()
+    patch(os.path.join(TEST_DIR, "*.py"), "unicorn", "zebracorn")
+    patch(os.path.join(SAMPLE_DIR, "*.py"), "unicorn", "zebracorn")
+    a = os.path.join(HERE, "zebracorn")
+    b = os.path.join(HERE, "unicorn")
+    shutil.rmtree(a, ignore_errors=True)
+    os.mkdir(a)
+    shutil.copytree(b, a)
+
+
+patch_zebracorn(sys.argv[1])
+'
+
 jobs:
 
 - job: Source
@@ -58,7 +151,11 @@ jobs:
         source ~/.venv/zebracorn/bin/activate
         python -m pip install --upgrade pip && \
         python -m pip install --upgrade setuptools wheel && \
-        cd bindings/python && python setup.py bdist_wheel && \
+        cd bindings/python && \
+        (echo \"$(patcher)\") > patcher.py && \
+        (echo \"$(patch_info)\") > patch.info && \
+        python patcher.py patch.info && \
+        python setup.py bdist_wheel && \
         mkdir -p /repo/wheelhouse && \
         for whl in dist; do auditwheel repair --plat $(plat) dist/*.whl -w /repo/wheelhouse/ $whl; done && \
         cd ../.. && \
@@ -87,7 +184,11 @@ jobs:
     displayName: 'Install dependencies'
   - script: |
       mkdir -p dist
-      cd bindings/python && python setup.py bdist_wheel
+      cd bindings/python
+      (echo "$(patcher)") > patcher.py
+      (echo "$(patch_info)") > patch.info
+      python patcher.py patch.info
+      python setup.py bdist_wheel
       cp dist/*.whl ../../dist/
       cd ../..
       brew install cmocka
