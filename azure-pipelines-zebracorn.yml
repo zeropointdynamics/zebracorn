@@ -90,7 +90,6 @@ variables:
         patch(os.path.join(SAMPLE_DIR, "*.py"), "unicorn", "zebracorn")
         a = os.path.join(HERE, "zebracorn")
         b = os.path.join(HERE, "unicorn")
-        shutil.rmtree(a, ignore_errors=True)
         os.mkdir(a)
         shutil.copytree(b, a)
 
@@ -188,6 +187,7 @@ jobs:
       cd bindings/python
       (echo "$(patcher)") > patcher.py
       (echo "$(patch_info)") > patch.info
+      cat patcher.py
       python patcher.py patch.info
       python setup.py bdist_wheel
       cp dist/*.whl ../../dist/
