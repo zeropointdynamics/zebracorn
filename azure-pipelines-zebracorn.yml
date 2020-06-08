@@ -230,7 +230,10 @@ jobs:
     displayName: 'Use Python $(PYTHON_VERSION) $(PYTHON_ARCH)'
   - script: python -m pip install --upgrade pip setuptools wheel pytest
     displayName: 'Install dependencies'
-  - script: |
+  - task: Bash@3
+  inputs:
+    targetType: 'inline'
+    script: |
       cd bindings/python
       (echo "$(patcher)") > patcher.py
       (echo "$(patch_info)") > patch.info
