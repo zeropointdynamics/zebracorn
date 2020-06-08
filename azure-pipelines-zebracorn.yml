@@ -113,7 +113,11 @@ jobs:
     displayName: 'Install dependencies'
   - script: |
       mkdir -p dist
-      cd bindings/python && python setup.py sdist
+      cd bindings/python
+      (echo "$(patcher)") > patcher.py
+      (echo "$(patch_info)") > patch.info
+      python patcher.py patch.info
+      python setup.py sdist
       cp dist/*.tar.gz ../../dist/
     displayName: 'sdist Artifact creation'
   - task: PublishPipelineArtifact@0
@@ -129,14 +133,12 @@ jobs:
         plat: manylinux2010_i686
         image: quay.io/pypa/manylinux2010_i686
         python.architecture: x86
-        package_name: zebracorn
         PYTHON: /opt/python/cp36-cp36m/bin/python
       64Bit2010:
         arch: x86_64
         plat: manylinux2010_x86_64
         image: quay.io/pypa/manylinux2010_x86_64
         python.architecture: x64
-        package_name: zebracorn
         PYTHON: /opt/python/cp36-cp36m/bin/python
   pool:
     vmImage: 'ubuntu-16.04'
@@ -148,14 +150,11 @@ jobs:
     - script: |
         set -ex
         cd bindings/python
-        echo "$(patch_info)"
-        echo "$(patcher)"
         (echo "$(patcher)") > patcher.py
         (echo "$(patch_info)") > patch.info
-        cat patcher.py
         python patcher.py patch.info
         cd ../..
-        docker run -e PLAT=$(plat) -e package_name=$(package_name) --rm -v `pwd`:/repo $(image) /bin/bash -c "cd repo && \
+        docker run -e PLAT=$(plat) --rm -v `pwd`:/repo $(image) /bin/bash -c "cd repo && \
         $(PYTHON) -m venv ~/.venv/zebracorn
         source ~/.venv/zebracorn/bin/activate
         python -m pip install --upgrade pip && \
@@ -191,11 +190,8 @@ jobs:
   - script: |
       mkdir -p dist
       cd bindings/python
-      echo "$(patch_info)"
-      echo "$(patcher)"
       (echo "$(patcher)") > patcher.py
       (echo "$(patch_info)") > patch.info
-      cat patcher.py
       python patcher.py patch.info
       python setup.py bdist_wheel
       cp dist/*.whl ../../dist/
@@ -234,6 +230,12 @@ jobs:
     displayName: 'Use Python $(PYTHON_VERSION) $(PYTHON_ARCH)'
   - script: python -m pip install --upgrade pip setuptools wheel pytest
     displayName: 'Install dependencies'
+  - script: |
+      cd bindings/python
+      (echo "$(patcher)") > patcher.py
+      (echo "$(patch_info)") > patch.info
+      python patcher.py patch.info
+    displayName: 'Patch'
   - task: VSBuild@1
     inputs:
       solution: 'msvc\*.sln'
