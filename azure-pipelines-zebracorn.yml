@@ -185,6 +185,10 @@ jobs:
   - script: |
       mkdir -p dist
       cd bindings/python
+      echo "GO"
+      echo "$(patch_info)"
+      echo "$(patcher)"
+      echo "GO"
       (echo "$(patcher)") > patcher.py
       (echo "$(patch_info)") > patch.info
       cat patcher.py
