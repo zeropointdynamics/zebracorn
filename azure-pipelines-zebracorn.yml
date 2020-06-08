@@ -12,54 +12,55 @@ variables:
     import sys
     
     HERE = os.path.abspath(os.path.dirname(__file__))
-    LIBS_DIR = os.path.join(ROOT_DIR, "zebracorn", "lib")
-    HEADERS_DIR = os.path.join(ROOT_DIR, "zebracorn", "include")
+    LIBS_DIR = os.path.join(ROOT_DIR, \"zebracorn\", \"lib\")
+    HEADERS_DIR = os.path.join(ROOT_DIR, \"zebracorn\", \"include\")
     
     def read(*parts):
-        with codecs.open(os.path.join(HERE, *parts), "rb", "utf-8") as f:
+        with codecs.open(os.path.join(HERE, *parts), \"rb\", \"utf-8\") as f:
             return f.read()
     
-    LONG = read(os.path.join("..", os.path.join("..", "README.md")))
+    LONG = read(os.path.join(\"..\", os.path.join(\"..\", \"README.md\")))
     
     setup(
-        provides=["zebracorn"],
-        packages=["zebracorn"],
-        name="zebracorn",
+        provides=[\"zebracorn\"],
+        packages=[\"zebracorn\"],
+        name=\"zebracorn\",
         version=VERSION,
         author=\"Zeropoint Dynamics\",
-        author_email="zelos@zeropointdynamics.com",
-        description="A Unicorn CPU emulator fork customized for the zelos binary emulator.",
+        author_email=\"zelos@zeropointdynamics.com\",
+        description=\"A Unicorn CPU emulator fork customized for the zelos binary emulator.\",
         long_description=LONG,
-        long_description_content_type="text/markdown",
-        url="https://github.com/zeropointdynamics/zebracorn",
+        long_description_content_type=\"text/markdown\",
+        url=\"https://github.com/zeropointdynamics/zebracorn\",
         classifiers=[
-            "Topic :: Security",
-            "Topic :: System :: Emulators",
-            "Development Status :: 4 - Beta",
-            "Intended Audience :: Information Technology",
-            "Intended Audience :: Developers",
-            "Operating System :: MacOS :: MacOS X",
-            "Operating System :: Microsoft :: Windows",
-            "Operating System :: POSIX :: Linux",
-            "Natural Language :: English",
-            "License :: OSI Approved :: GNU Affero General Public License v3",
-            "Programming Language :: Python",
-            "Programming Language :: Python :: 2",
-            "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.6",
-            "Programming Language :: Python :: 3.7",
-            "Programming Language :: Python :: 3.8",
+            \"Topic :: Security\",
+            \"Topic :: System :: Emulators\",
+            \"Development Status :: 4 - Beta\",
+            \"Intended Audience :: Information Technology\",
+            \"Intended Audience :: Developers\",
+            \"Operating System :: MacOS :: MacOS X\",
+            \"Operating System :: Microsoft :: Windows\",
+            \"Operating System :: POSIX :: Linux\",
+            \"Natural Language :: English\",
+            \"License :: OSI Approved :: GNU Affero General Public License v3\",
+            \"Programming Language :: Python\",
+            \"Programming Language :: Python :: 2\",
+            \"Programming Language :: Python :: 3\",
+            \"Programming Language :: Python :: 3.6\",
+            \"Programming Language :: Python :: 3.7\",
+            \"Programming Language :: Python :: 3.8\",
         ],
-        requires=["ctypes"],
+        requires=[\"ctypes\"],
         cmdclass=cmdclass,
         zip_safe=True,
         include_package_data=True,
         is_pure=True,
         package_data={
-            "zebracorn": ["lib/*", "include/unicorn/*"]
+            \"zebracorn\": [\"lib/*\", \"include/unicorn/*\"]
         }
     )
     sys.exit(0)
+    setup(
 - name: patcher
   value: |+
     import glob
@@ -68,9 +69,9 @@ variables:
     import sys
 
     HERE = os.path.abspath(os.path.dirname(__file__))
-    REPO_DIR = os.path.join(os.path.join(HERE, ".."), "..")
-    TEST_DIR = os.path.join(os.path.join(REPO_DIR, "tests"), "regress")
-    SAMPLE_DIR = os.path.join(os.path.join(REPO_DIR, "bindings"), "python")
+    REPO_DIR = os.path.join(os.path.join(HERE, \"..\"), \"..\")
+    TEST_DIR = os.path.join(os.path.join(REPO_DIR, \"tests\"), \"regress\")
+    SAMPLE_DIR = os.path.join(os.path.join(REPO_DIR, \"bindings\"), \"python\")
 
 
     def patch(glob_value, find, replace):
@@ -78,18 +79,18 @@ variables:
             with open(filepath) as file:
                 s = file.read()
             s = s.replace(find, replace)
-            with open(filepath, "w") as file:
+            with open(filepath, \"w\") as file:
                 file.write(s)
 
 
     def patch_zebracorn(patchfile):
         f = open(patchfile)
-        patch("setup.py", "setup(", f.read())
+        patch(\"setup.py\", \"setup(\", f.read())
         f.close()
-        patch(os.path.join(TEST_DIR, "*.py"), "unicorn", "zebracorn")
-        patch(os.path.join(SAMPLE_DIR, "*.py"), "unicorn", "zebracorn")
-        a = os.path.join(HERE, "zebracorn")
-        b = os.path.join(HERE, "unicorn")
+        patch(os.path.join(TEST_DIR, \"*.py\"), \"unicorn\", \"zebracorn\")
+        patch(os.path.join(SAMPLE_DIR, \"*.py\"), \"unicorn\", \"zebracorn\")
+        a = os.path.join(HERE, \"zebracorn\")
+        b = os.path.join(HERE, \"unicorn\")
         os.mkdir(a)
         shutil.copytree(b, a)
 
