@@ -24,6 +24,8 @@
 
 #include "uc_priv.h"
 
+#include "afl/afl-unicorn-cpu-inl.h"
+
 static tcg_target_ulong cpu_tb_exec(CPUState *cpu, uint8_t *tb_ptr);
 static TranslationBlock *tb_find_slow(CPUArchState *env, target_ulong pc,
         target_ulong cs_base, uint64_t flags);
@@ -246,6 +248,8 @@ int cpu_exec(struct uc_struct *uc, CPUArchState *env)   // qq
                             next_tb & TB_EXIT_MASK, tb);
                 }
 
+                AFL_UNICORN_CPU_SNIPPET2;
+
                 /* cpu_interrupt might be called while translating the
                    TB, but before it is linked into a potentially
                    infinite loop and becomes env->current_tb. Avoid
@@ -396,6 +400,8 @@ static TranslationBlock *tb_find_slow(CPUArchState *env, target_ulong pc,
         ptb1 = &tb->phys_hash_next;
     }
 not_found:
+    AFL_UNICORN_CPU_SNIPPET1;
+
     /* if no translated code available, then translate it now */
     tb = tb_gen_code(cpu, pc, cs_base, (int)flags, 0);   // qq
     if (tb == NULL) {

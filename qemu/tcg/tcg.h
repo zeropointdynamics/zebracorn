@@ -831,7 +831,7 @@ static inline void *tcg_malloc(TCGContext *s, int size)
 }
 
 /* only used for debugging purposes */
-void tcg_dump_ops(TCGContext *s);
+void tcg_dump_ops(TCGContext *s, void *buffer, uint64_t buffer_size);
 
 void dump_ops(const uint16_t *opc_buf, const TCGArg *opparam_buf);
 TCGv_i32 tcg_const_i32(TCGContext *s, int32_t val);

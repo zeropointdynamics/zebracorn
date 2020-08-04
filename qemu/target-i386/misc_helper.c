@@ -184,7 +184,7 @@ void helper_invlpg(CPUX86State *env, target_ulong addr)
     tlb_flush_page(CPU(cpu), addr);
 }
 
-void helper_rdtsc(CPUX86State *env)
+void helper_rdtsc_internal(CPUX86State *env)
 {
     uint64_t val;
 
@@ -198,10 +198,30 @@ void helper_rdtsc(CPUX86State *env)
     env->regs[R_EDX] = (uint32_t)(val >> 32);
 }
 
+// zpd(kzs): rdtsc interrupt hook
+void helper_rdtsc(CPUX86State *env)
+{
+    helper_rdtsc_internal(env);
+
+    // post-RDTSC interrupt hook
+    struct hook *hook;
+    HOOK_FOREACH_VAR_DECLARE;
+    HOOK_FOREACH(env->uc, hook, UC_HOOK_INTR) {
+        ((uc_cb_hookintr_t)hook->callback)(env->uc, 0xf5f5f5f5, hook->user_data);
+    }
+}
+
 void helper_rdtscp(CPUX86State *env)
 {
-    helper_rdtsc(env);
+    helper_rdtsc_internal(env);
     env->regs[R_ECX] = (uint32_t)(env->tsc_aux);
+
+    // post-RDTSCP interrupt hook
+    struct hook *hook;
+    HOOK_FOREACH_VAR_DECLARE;
+    HOOK_FOREACH(env->uc, hook, UC_HOOK_INTR) {
+        ((uc_cb_hookintr_t)hook->callback)(env->uc, 0xf5f5f5f6, hook->user_data);
+    }
 }
 
 void helper_rdpmc(CPUX86State *env)

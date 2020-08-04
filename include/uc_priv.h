@@ -250,6 +250,21 @@ struct uc_struct {
     uint32_t target_page_align;
     uint64_t next_pc;   // save next PC for some special cases
     bool hook_insert;	// insert new hook at begin of the hook list (append by default)
+
+    // zpd(kzs): Add some necessary members to track AFL and block count info
+    bool use_afl_mode;
+    unsigned char afl_fork_child;
+    unsigned int afl_forksrv_pid;
+    unsigned char *afl_area_ptr; // Storage area for AFL tracing
+    // TODO(kzs): save/restore prev_loc when thread-swapping in python
+    unsigned long afl_prev_loc; // Previous location for AFL tracing
+    unsigned int afl_inst_rms; // Default map size for AFL tracing
+    int afl_first_instr;
+    uint64_t afl_start_address;
+    uint64_t afl_end_address;
+    uint64_t inst_count; // total number of instructions executed
+    uint64_t bb_count; // total number of blocks executed'
+    uint64_t bb_count_interrupt; // # of bb's executed before signaling interrupt
 };
 
 // Metadata stub for the variable-size cpu context used with uc_context_*()

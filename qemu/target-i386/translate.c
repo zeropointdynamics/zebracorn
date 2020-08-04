@@ -8513,6 +8513,13 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         }
     }
 
+    // Generate exception if instruction is larger than 15 bytes. This is a
+    // quick fix because it still executes the instruction before generating
+    // the exception.
+    if (s->pc - pc_start > 15) {
+        goto illegal_op;
+    }
+
     return s->pc;
  illegal_op:
     if (s->prefix & PREFIX_LOCK)
@@ -8713,8 +8720,29 @@ static inline void gen_intermediate_code_internal(uint8_t *gen_opc_cc_op,
         env->uc->size_arg = -1;
     }
 
+    // zpd(kzs)
+    TCGv_ptr tuc = tcg_const_ptr(tcg_ctx, env->uc);
+    TCGv_i64 tpc = tcg_const_i64(tcg_ctx, tb->pc);
+
+    // zpd(kzs): Adds basic block counting and thread interrupts
+    if (!env->uc->block_full) {
+        gen_helper_uc_tracebbcount(tcg_ctx, tuc, tpc);
+    }
+
+    // zpd(kzs): Adds AFL edge coverage support (only when AFL is in use)
+    if(env->uc->afl_area_ptr) {
+        gen_helper_afl_traceedges(tcg_ctx, tuc, tpc);
+    }
+
     gen_tb_start(tcg_ctx);
     for(;;) {
+        // zpd(kzs): increment instruction count        
+        TCGv_ptr count_ptr = tcg_const_ptr(tcg_ctx, &(env->uc->inst_count));
+        TCGv count = tcg_temp_new(tcg_ctx);
+        tcg_gen_ld32u_tl(tcg_ctx, count, count_ptr, 0);
+        tcg_gen_addi_tl(tcg_ctx, count, count, 1);
+        tcg_gen_st32_tl(tcg_ctx, count, count_ptr, 0);
+        
         if (unlikely(!QTAILQ_EMPTY(&cs->breakpoints))) {
             QTAILQ_FOREACH(bp, &cs->breakpoints, entry) {
                 if (bp->pc == pc_ptr &&
@@ -8771,6 +8799,7 @@ static inline void gen_intermediate_code_internal(uint8_t *gen_opc_cc_op,
     //    gen_io_end();
 done_generating:
     gen_tb_end(tcg_ctx, tb, num_insns);
+    tb->icount = num_insns;
     *tcg_ctx->gen_opc_ptr = INDEX_op_end;
     /* we don't forget to fill the last values */
     if (search_pc) {
