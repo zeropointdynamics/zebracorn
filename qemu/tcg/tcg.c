@@ -1186,9 +1186,12 @@ static const char * const ldst_name[] =
 #endif // _MSC_VER
 };
 
+inline int min(int a, int b) {
+    return a < b ? a : b;
+}
+
 void tcg_dump_ops(TCGContext *s, void *buffer, uint64_t buffer_size)
 {
-    inline int min(int a, int b) { return a < b ? a : b; }
     const uint16_t *opc_ptr;
     const TCGArg *args;
     TCGArg arg;
