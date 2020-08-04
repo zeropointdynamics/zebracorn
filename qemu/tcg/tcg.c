@@ -1186,7 +1186,7 @@ static const char * const ldst_name[] =
 #endif // _MSC_VER
 };
 
-inline int min(int a, int b) {
+inline int minz(int a, int b) {
     return a < b ? a : b;
 }
 
@@ -1216,9 +1216,9 @@ void tcg_dump_ops(TCGContext *s, void *buffer, uint64_t buffer_size)
             pc = args[0];
 #endif
             if (!first_insn) {
-                cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), "\n");
+                cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), "\n");
             }
-            cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size),
+            cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size),
                          " ---- 0x%" PRIx64, pc);
             first_insn = 0;
             nb_oargs = def->nb_oargs;
@@ -1234,12 +1234,12 @@ void tcg_dump_ops(TCGContext *s, void *buffer, uint64_t buffer_size)
             nb_cargs = def->nb_cargs;
 
             /* function name, flags, out args */
-            cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size),
+            cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size),
                      " %s %s,$0x%" TCG_PRIlx ",$%d", def->name,
                      tcg_find_helper(s, args[nb_oargs + nb_iargs]),
                      args[nb_oargs + nb_iargs + 1], nb_oargs);
             for (i = 0; i < nb_oargs; i++) {
-                cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), ",%s",
+                cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), ",%s",
                            tcg_get_arg_str_idx(s, buf, sizeof(buf), args[i]));
             }
             for (i = 0; i < nb_iargs; i++) {
@@ -1248,10 +1248,10 @@ void tcg_dump_ops(TCGContext *s, void *buffer, uint64_t buffer_size)
                 if (arg != TCG_CALL_DUMMY_ARG) {
                     t = tcg_get_arg_str_idx(s, buf, sizeof(buf), arg);
                 }
-                cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), ",%s", t);
+                cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), ",%s", t);
             }
         } else {
-            cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), " %s ",
+            cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), " %s ",
                                  def->name);
             if (c == INDEX_op_nopn) {
                 /* variable number of arguments */
@@ -1267,16 +1267,16 @@ void tcg_dump_ops(TCGContext *s, void *buffer, uint64_t buffer_size)
             k = 0;
             for(i = 0; i < nb_oargs; i++) {
                 if (k != 0) {
-                    cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), ",");
+                    cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), ",");
                 }
-                cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), "%s",
+                cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), "%s",
                            tcg_get_arg_str_idx(s, buf, sizeof(buf), args[k++]));
             }
             for(i = 0; i < nb_iargs; i++) {
                 if (k != 0) {
-                    cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), ",");
+                    cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), ",");
                 }
-                cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), "%s",
+                cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), "%s",
                            tcg_get_arg_str_idx(s, buf, sizeof(buf), args[k++]));
             }
             switch (c) {
@@ -1289,10 +1289,10 @@ void tcg_dump_ops(TCGContext *s, void *buffer, uint64_t buffer_size)
             case INDEX_op_setcond_i64:
             case INDEX_op_movcond_i64:
                 if (args[k] < ARRAY_SIZE(cond_name) && cond_name[args[k]]) {
-                    cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size),
+                    cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size),
                                  ",%s", cond_name[args[k++]]);
                 } else {
-                    cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size),
+                    cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size),
                                ",$0x%" TCG_PRIlx, args[k++]);
                 }
                 i = 1;
@@ -1302,10 +1302,10 @@ void tcg_dump_ops(TCGContext *s, void *buffer, uint64_t buffer_size)
             case INDEX_op_qemu_ld_i64:
             case INDEX_op_qemu_st_i64:
                 if (args[k] < ARRAY_SIZE(ldst_name) && ldst_name[args[k]]) {
-                    cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size),
+                    cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size),
                                  ",%s", ldst_name[args[k++]]);
                 } else {
-                    cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size),
+                    cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size),
                                ",$0x%" TCG_PRIlx, args[k++]);
                  }
                 i = 1;
@@ -1316,14 +1316,14 @@ void tcg_dump_ops(TCGContext *s, void *buffer, uint64_t buffer_size)
             }
             for(; i < nb_cargs; i++) {
                 if (k != 0) {
-                    cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), ",");
+                    cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), ",");
                 }
                 arg = args[k++];
-                cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size),
+                cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size),
                                "$0x%" TCG_PRIlx, arg);
             }
         }
-        cx += snprintf(buffer + cx, buffer_size - min(cx, buffer_size), "\n");
+        cx += snprintf((char*)buffer + cx, buffer_size - minz(cx, buffer_size), "\n");
         args += nb_iargs + nb_oargs + nb_cargs;
     }
 }
