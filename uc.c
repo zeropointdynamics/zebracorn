@@ -34,6 +34,67 @@ static void free_table(gpointer key, gpointer value, gpointer data)
     g_free((void *) ti);
 }
 
+// zpd(kzs): count getters/setters
+
+UNICORN_EXPORT
+uint64_t uc_bb_count(uc_engine *uc)
+{
+    return uc->bb_count;
+}
+
+UNICORN_EXPORT
+void uc_set_bb_count(uc_engine *uc, uint64_t count)
+{
+    uc->bb_count = count;
+}
+
+UNICORN_EXPORT
+uint64_t uc_inst_count(uc_engine *uc)
+{
+    return uc->inst_count;
+}
+
+UNICORN_EXPORT
+void uc_set_inst_count(uc_engine *uc, uint64_t count)
+{
+    uc->inst_count = count;
+}
+
+UNICORN_EXPORT
+uint64_t uc_bb_count_interrupt(uc_engine *uc)
+{
+    return uc->bb_count_interrupt+1;
+}
+
+UNICORN_EXPORT
+uc_err uc_set_bb_count_interrupt(uc_engine *uc, uint64_t count)
+{
+    // Must be a power of 2
+    bool isPow2 = (count && !(count & (count - 1)));
+    if (isPow2) {
+        uc->bb_count_interrupt = count-1;
+        return UC_ERR_OK;
+    }
+    return UC_ERR_ARG;
+}
+
+// Although this is labelled as '_arm', all the architectures point to the same
+// generic tcp dump implementation. This is an artifact of the build setup.
+void tcg_dump_ops_arm(void *s, void *buffer, uint64_t buffer_size);
+void tcg_dump_ops_x86_64(void *s, void *buffer, uint64_t buffer_size);
+
+UNICORN_EXPORT
+uc_err uc_get_tcg_arm(uc_engine *uc, void *buffer, uint64_t buffer_size) {
+  tcg_dump_ops_arm(uc->tcg_ctx, buffer, buffer_size);
+  return UC_ERR_OK;
+}
+
+UNICORN_EXPORT
+uc_err uc_get_tcg_x86_64(uc_engine *uc, void *buffer, uint64_t buffer_size) {
+  tcg_dump_ops_x86_64(uc->tcg_ctx, buffer, buffer_size);
+  return UC_ERR_OK;
+}
+
 UNICORN_EXPORT
 unsigned int uc_version(unsigned int *major, unsigned int *minor)
 {
@@ -1194,6 +1255,61 @@ uc_err uc_hook_del(uc_engine *uc, uc_hook hh)
     }
 
     return UC_ERR_OK;
+}
+
+// zpd(kzs): TCG helper
+void helper_uc_tracebbcount(void *handle, int64_t address);
+void helper_uc_tracebbcount(void *handle, int64_t address)
+{
+    struct uc_struct *uc = handle;
+    struct list_item *cur = uc->hook[UC_HOOK_INTR_IDX].head;
+    struct hook *hook;
+
+    uc->bb_count++;
+
+    // Only generate a 'thread switch' interrupt if N blocks have been executed
+    // since the last thread switch. Runs every block, so we use
+    // a faster implementation of (count % max_count != 1) here. However, this
+    // requires that bb_count_interrupt is a power of 2.
+    if ((uc->bb_count & uc->bb_count_interrupt)) {
+        return;
+    }
+
+    // sync PC in CPUArchState with address
+    if (uc->set_pc) {
+        uc->set_pc(uc, address);
+    }
+
+    while (cur != NULL && !uc->stop_request) {
+        hook = (struct hook *)cur->data;
+        ((uc_cb_hookintr_t)hook->callback)(uc, 0xf8f8f8f8, hook->user_data);
+        cur = cur->next;
+    }
+}
+
+// zpd(kzs): TCG helper
+void helper_afl_traceedges(void *handle, int64_t cur_loc);
+void helper_afl_traceedges(void *handle, int64_t cur_loc)
+{
+  struct uc_struct *uc = handle;
+
+  // We want to log all addresses, so the checks for 'start < addr < end'
+  // are removed
+
+  // Looks like QEMU always maps to fixed locations, so ASAN is not a
+  // concern. Phew. But instruction addresses may be aligned. Let's mangle
+  // the value to get something quasi-uniform.
+
+  cur_loc  = (cur_loc >> 4) ^ (cur_loc << 8);
+  cur_loc &= uc->afl_inst_rms - 1;
+
+  // Implement probabilistic instrumentation by looking at scrambled block
+  // address. This keeps the instrumented locations stable across runs.
+  if (cur_loc >= uc->afl_inst_rms)
+    return;
+
+  uc->afl_area_ptr[cur_loc ^ uc->afl_prev_loc]++;
+  uc->afl_prev_loc = cur_loc >> 1;
 }
 
 // TCG helper

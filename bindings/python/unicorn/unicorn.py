@@ -11,6 +11,8 @@ import weakref
 
 from . import x86_const, arm64_const, unicorn_const as uc
 
+WITH_ZEROPOINT_PATCH = True
+
 if not hasattr(sys.modules[__name__], "__file__"):
     __file__ = inspect.getfile(inspect.currentframe())
 
@@ -89,7 +91,7 @@ _path_list = [os.getenv('LIBUNICORN_PATH', None),
 #print(_path_list)
 #print("-" * 80)
 
-for _path in _path_list:
+for _path in _path_list + [os.path.dirname(__file__)]:
     if _path is None: continue
     _uc = _load_lib(_path)
     if _uc is not None: break
@@ -140,6 +142,15 @@ _setup_prototype(_uc, "uc_context_save", ucerr, uc_engine, uc_context)
 _setup_prototype(_uc, "uc_context_restore", ucerr, uc_engine, uc_context)
 _setup_prototype(_uc, "uc_context_size", ctypes.c_size_t, uc_engine)
 _setup_prototype(_uc, "uc_mem_regions", ucerr, uc_engine, ctypes.POINTER(ctypes.POINTER(_uc_mem_region)), ctypes.POINTER(ctypes.c_uint32))
+_setup_prototype(_uc, "uc_bb_count", ucerr, uc_engine)
+_setup_prototype(_uc, "uc_set_bb_count", ucerr, uc_engine, ctypes.c_uint64)
+_setup_prototype(_uc, "uc_inst_count", ucerr, uc_engine)
+_setup_prototype(_uc, "uc_set_inst_count", ucerr, uc_engine, ctypes.c_uint64)
+_setup_prototype(_uc, "uc_bb_count_interrupt", ucerr, uc_engine)
+_setup_prototype(_uc, "uc_set_bb_count_interrupt", ucerr, uc_engine, ctypes.c_uint64)
+_setup_prototype(_uc, "uc_get_tcg_arm", ucerr, uc_engine, ctypes.c_void_p, ctypes.c_uint64)
+_setup_prototype(_uc, "uc_get_tcg_x86_64", ucerr, uc_engine, ctypes.c_void_p, ctypes.c_uint64)
+
 
 # uc_hook_add is special due to variable number of arguments
 _uc.uc_hook_add = _uc.uc_hook_add
@@ -627,6 +638,36 @@ class Uc(object):
         finally:
             _uc.uc_free(regions)
 
+    def bb_count(self):
+        return _uc.uc_bb_count(self._uch)
+
+    def set_bb_count(self, value):
+        _uc.uc_set_bb_count(self._uch, value)
+
+    def inst_count(self):
+        return _uc.uc_inst_count(self._uch)
+
+    def set_inst_count(self, value):
+        _uc.uc_set_inst_count(self._uch, value)
+
+    def bb_count_interrupt(self):
+        return _uc.uc_bb_count_interrupt(self._uch)
+
+    def set_bb_count_interrupt(self, value):
+        status = _uc.uc_set_bb_count_interrupt(self._uch, value)
+        if status != uc.UC_ERR_OK:
+            raise UcError(status)
+
+    def get_tcg_arm(self, buffer, buffer_size):
+        status = _uc.uc_get_tcg_arm(self._uch, buffer, buffer_size)
+        if status != uc.UC_ERR_OK:
+            raise UcError(status)
+
+    def get_tcg_x86_64(self, buffer, buffer_size):
+        status = _uc.uc_get_tcg_x86_64(self._uch, buffer, buffer_size)
+        if status != uc.UC_ERR_OK:
+            raise UcError(status)
+
 
 class UcContext(ctypes.Structure):
     def __init__(self, h):
@@ -639,6 +680,16 @@ class UcContext(ctypes.Structure):
     def __del__(self):
         _uc.uc_free(self.context)
 
+
+def context_factory(size):
+    class SavedContext(ctypes.Structure):
+        _fields_ = [
+            ('size', ctypes.c_size_t),
+            ('data', ctypes.c_char*size)
+            ]
+    ctxt = SavedContext()
+    ctxt.size = size
+    return ctxt
 
 # print out debugging info
 def debug():

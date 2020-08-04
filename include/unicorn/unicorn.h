@@ -758,6 +758,33 @@ uc_err uc_context_restore(uc_engine *uc, uc_context *context);
 UNICORN_EXPORT
 size_t uc_context_size(uc_engine *uc);
 
+// zpd(kzs): count getters/setters
+
+UNICORN_EXPORT
+uint64_t uc_bb_count(uc_engine *uc);
+
+UNICORN_EXPORT
+void uc_set_bb_count(uc_engine *uc, uint64_t count);
+
+UNICORN_EXPORT
+uint64_t uc_inst_count(uc_engine *uc);
+
+UNICORN_EXPORT
+void uc_set_inst_count(uc_engine *uc, uint64_t count);
+
+UNICORN_EXPORT
+uint64_t uc_bb_count_interrupt(uc_engine *uc);
+
+UNICORN_EXPORT
+uc_err uc_set_bb_count_interrupt(uc_engine *uc, uint64_t count);
+
+UNICORN_EXPORT
+uc_err uc_get_tcg_arm(uc_engine *uc, void* buffer, uint64_t buffer_size);
+
+UNICORN_EXPORT
+uc_err uc_get_tcg_x86_64(uc_engine *uc, void* buffer, uint64_t buffer_size);
+
+
 #ifdef __cplusplus
 }
 #endif

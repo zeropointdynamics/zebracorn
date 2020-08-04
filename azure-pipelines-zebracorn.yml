@@ -19,7 +19,7 @@ variables:
             return f.read()
     
     LONG = read(os.path.join(\"..\", os.path.join(\"..\", \"README.md\")))
-    VERSION=\"0.0.0\"
+    VERSION=\"0.0.1\"
     
     setup(
         provides=[\"zebracorn\"],
